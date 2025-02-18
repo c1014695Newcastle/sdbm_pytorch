@@ -49,22 +49,26 @@ class Net(nn.Module):
         x = self.fc_layers(x)
         return int(self.final_layer(x).detach().numpy()[0] > 0.5)
 
+
 def train_net(model, device, train_loader, optimizer, epoch):
     model.to(device)
     model.train()
+    train_loss = 0
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.unsqueeze(1).float().to(device)
         optimizer.zero_grad()
         output = model(data)
         loss = model.loss_fn(output, target)
         loss.backward()
+        train_loss += loss.item()
         optimizer.step()
-        if batch_idx % 50 == 0:
+        if batch_idx % 100 == 0:
             print(
                 f"Train Epoch: {epoch} [{batch_idx * len(data)}/{len(train_loader.dataset)}"
                 f" ({100.0 * batch_idx / len(train_loader):.0f}%)]"
                 f"\tLoss: {loss.item():.6f}"
             )
+    return train_loss / len(train_loader.dataset)
 
 
 def test_net(model, device, test_loader):
@@ -85,6 +89,7 @@ def test_net(model, device, test_loader):
         f" Accuracy: {correct}/{len(test_loader.dataset)}"
         f" ({100.0 * correct / len(test_loader.dataset):.3f}%)\n"
     )
+    return test_loss
 
 if __name__ == '__main__':
     print('=== Testing Model ===')

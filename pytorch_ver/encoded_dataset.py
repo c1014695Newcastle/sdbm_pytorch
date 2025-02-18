@@ -7,8 +7,10 @@ from torchvision import datasets
 from torch.utils.data import DataLoader, Subset
 import random
 import numpy as np
+import os
+from tqdm import tqdm
 
-encoder_epochs = 10
+encoder_epochs = 100
 classes = [0, 1]
 
 SEED = 42
@@ -17,6 +19,7 @@ random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
 
+encoder_path = '../models/encoder.pth'
 
 class AutoEncoder(nn.Module):
     def __init__(self, encoding_dim):
@@ -129,9 +132,15 @@ def make_encoded_dataset(num_dimensions, device, batch_size=64):
         shuffle=False
     )
 
-    # Run the training and testing for defined epochs
-    for epoch in range(encoder_epochs):
-        train_autoencoder(epoch, train_loader, device, optimizer, encoder, criterion)
+    if os.path.exists(encoder_path):
+        print('Pre-trained Encoder Exists!')
+        encoder.load_state_dict(torch.load(encoder_path))
+    else:
+        # Run the training and testing for defined epochs
+        for epoch in range(encoder_epochs):
+            train_autoencoder(epoch, train_loader, device, optimizer, encoder, criterion)
+        torch.save(encoder.state_dict(), encoder_path)
+    encoder.eval()
 
     train_features = []
     train_labels = []
@@ -139,13 +148,13 @@ def make_encoded_dataset(num_dimensions, device, batch_size=64):
     test_labels = []
 
     with torch.no_grad():
-        for data, label in train_loader:
+        for data, label in tqdm(train_loader, desc="Processing training data", unit="data"):
             # Get the encoded features (latent space representation)
             encoded = encoder.encoder(data.view(-1, 28 * 28).to(device))
             train_features.append(encoded.to('cpu'))
             train_labels.append(label)
 
-        for data, label in test_loader:
+        for data, label in tqdm(test_loader, desc="Processing training data", unit="data"):
             # Get the encoded features (latent space representation)
             encoded = encoder.encoder(data.view(-1, 28 * 28).to(device))
             test_features.append(encoded.to('cpu'))
